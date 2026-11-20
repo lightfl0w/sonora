@@ -167,6 +167,16 @@ impl Sequencer {
         self.cursor = self.pending.partition_point(|p| p.frame < frame);
     }
 
+    pub fn next_note_id(&mut self) -> u64 {
+        let id = self.id_counter;
+        self.id_counter = self.id_counter.wrapping_add(1);
+        id
+    }
+
+    pub fn peak_events(&self) -> usize {
+        self.peak_events
+    }
+
     pub fn reset(&mut self) {
         self.cursor = 0;
         self.frame = 0;
