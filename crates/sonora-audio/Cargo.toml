@@ -3,3 +3,10 @@ name = "sonora-audio"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+
+[dependencies]
+sonora-core = { workspace = true }
+sonora-engine = { workspace = true }
+cpal = { workspace = true }
+crossbeam-queue = { workspace = true }
+thiserror = { workspace = true }
