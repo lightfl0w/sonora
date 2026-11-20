@@ -279,6 +279,10 @@ impl RenderCore {
         }
     }
 
+    pub fn scope_write_index(&self) -> usize {
+        self.scope_idx
+    }
+
     pub fn scope_snapshot(&self, out: &mut Vec<f32>) {
         out.clear();
         out.reserve(SCOPE_LEN);
@@ -462,7 +466,6 @@ mod tests {
     }
 
     #[test]
-    #[test]
     fn offline_render_produces_sound() {
         let mut t = Track::new(builtin::PIANO, false, 1.0);
         t.notes = vec![note(1, 1.0, 60), note(1, 3.0, 64)];
@@ -495,6 +498,7 @@ mod tests {
         assert!(diff < 1e-3, "两次渲染应一致，差异 {diff}");
     }
 
+    #[test]
     fn fade_envelope_is_flat_in_middle() {
         assert!(fade_envelope(0.0, 32.0) < 0.01);
         assert!((fade_envelope(16.0, 32.0) - 1.0).abs() < 1e-6);
