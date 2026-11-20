@@ -1,0 +1,5 @@
+[package]
+name = "sonora-project"
+version.workspace = true
+edition.workspace = true
+license.workspace = true

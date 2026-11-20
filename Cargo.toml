@@ -1,10 +1,23 @@
-[package]
-name = "sonora"
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
 
-[dependencies]
-gpui = { package = "gpui-fast", version = "0.1.0" }
-gpui_platform = { package = "gpui-fast-platform", version = "0.1.0", features = ["wayland", "x11"] }
+[workspace.dependencies]
+sonora-core = { path = "crates/sonora-core" }
+sonora-dsp = { path = "crates/sonora-dsp" }
+sonora-engine = { path = "crates/sonora-engine" }
+sonora-audio = { path = "crates/sonora-audio" }
+sonora-midi = { path = "crates/sonora-midi" }
+sonora-project = { path = "crates/sonora-project" }
+sonora-ui = { path = "crates/sonora-ui" }
+
 cpal = "0.18.2"
 crossbeam-queue = "0.3.14"
+gpui-fast = "0.1.17"
+thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
