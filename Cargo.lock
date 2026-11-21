@@ -606,6 +606,9 @@ dependencies = [
 [[package]]
 name = "sonora-core"
 version = "0.1.0"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "sonora-dsp"
@@ -634,6 +637,13 @@ dependencies = [
 [[package]]
 name = "sonora-project"
 version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sonora-core",
+ "sonora-engine",
+ "thiserror 2.0.21",
+]
 
 [[package]]
 name = "sonora-ui"
