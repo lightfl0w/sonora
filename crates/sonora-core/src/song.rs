@@ -1,6 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 use crate::voice::VoiceId;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Note {
     pub bar: u32,
     pub beat: f32,
@@ -15,14 +17,19 @@ impl Note {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Track {
     pub voice: VoiceId,
+    #[serde(default)]
     pub name: String,
+    #[serde(default)]
     pub drums: bool,
     pub level: f32,
+    #[serde(default)]
     pub muted: bool,
+    #[serde(default)]
     pub solo: bool,
+    #[serde(default)]
     pub notes: Vec<Note>,
 }
 
@@ -40,7 +47,7 @@ impl Track {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Song {
     pub bpm: f32,
     pub bars: u32,
@@ -95,6 +102,53 @@ impl Song {
         } else {
             !track.muted
         }
+    }
+
+    pub fn sanitize(&mut self) {
+        self.bpm = if self.bpm.is_finite() {
+            self.bpm.clamp(20.0, 300.0)
+        } else {
+            120.0
+        };
+        self.bars = self.bars.clamp(1, 512);
+        self.master = sane(self.master, 0.8);
+        self.reverb_size = sane(self.reverb_size, 0.82);
+        self.reverb_damp = sane(self.reverb_damp, 0.55);
+        self.reverb_wet = sane(self.reverb_wet, 0.5);
+
+        self.tracks.retain(|t| t.notes.len() <= MAX_NOTES_PER_TRACK);
+        if self.tracks.is_empty() {
+            self.tracks.push(Track::new(0, false, 0.9));
+        }
+
+        for track in &mut self.tracks {
+            track.level = sane(track.level, 0.9);
+            for note in &mut track.notes {
+                note.bar = note.bar.clamp(1, self.bars);
+                note.beat = if note.beat.is_finite() {
+                    note.beat.clamp(1.0, 4.0)
+                } else {
+                    1.0
+                };
+                note.len = if note.len.is_finite() {
+                    note.len.clamp(0.0625, 16.0)
+                } else {
+                    1.0
+                };
+                note.vel = sane(note.vel, 0.8).clamp(0.05, 1.0);
+                note.midi = note.midi.min(127);
+            }
+        }
+    }
+}
+
+pub const MAX_NOTES_PER_TRACK: usize = 100_000;
+
+fn sane(value: f32, fallback: f32) -> f32 {
+    if value.is_finite() {
+        value.clamp(0.0, 1.0)
+    } else {
+        fallback
     }
 }
 

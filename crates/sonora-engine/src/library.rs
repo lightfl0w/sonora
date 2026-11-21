@@ -19,10 +19,10 @@ pub struct VoiceLibrary {
     next_id: VoiceId,
 }
 
-#[derive(Serialize, Deserialize)]
-struct StoredVoice {
-    name: String,
-    preset: VoicePreset,
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct StoredVoice {
+    pub name: String,
+    pub preset: VoicePreset,
 }
 
 impl VoiceLibrary {
@@ -44,26 +44,13 @@ impl VoiceLibrary {
     }
 
     pub fn load(path: &Path) -> Self {
-        let mut lib = Self::builtins();
         let Ok(text) = std::fs::read_to_string(path) else {
-            return lib;
+            return Self::builtins();
         };
         let Ok(stored) = serde_json::from_str::<Vec<StoredVoice>>(&text) else {
-            return lib;
+            return Self::builtins();
         };
-        for v in stored {
-            let id = lib.next_id;
-            lib.next_id += 1;
-            let mut preset = v.preset;
-            preset.clamp_params();
-            lib.voices.push(VoiceDef {
-                id,
-                name: v.name,
-                preset,
-                builtin: false,
-            });
-        }
-        lib
+        Self::with_user_voices(&stored)
     }
 
     pub fn load_default() -> Self {
@@ -79,15 +66,7 @@ impl VoiceLibrary {
     }
 
     pub fn save(&self, path: &Path) -> std::io::Result<()> {
-        let stored: Vec<StoredVoice> = self
-            .voices
-            .iter()
-            .filter(|v| !v.builtin)
-            .map(|v| StoredVoice {
-                name: v.name.clone(),
-                preset: v.preset,
-            })
-            .collect();
+        let stored = self.export_user();
 
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
@@ -98,6 +77,34 @@ impl VoiceLibrary {
 
     pub fn save_default(&self) -> std::io::Result<()> {
         self.save(&Self::default_path())
+    }
+
+    pub fn export_user(&self) -> Vec<StoredVoice> {
+        self.voices
+            .iter()
+            .filter(|v| !v.builtin)
+            .map(|v| StoredVoice {
+                name: v.name.clone(),
+                preset: v.preset,
+            })
+            .collect()
+    }
+
+    pub fn with_user_voices(user: &[StoredVoice]) -> Self {
+        let mut lib = Self::builtins();
+        for v in user {
+            let id = lib.next_id;
+            lib.next_id += 1;
+            let mut preset = v.preset;
+            preset.clamp_params();
+            lib.voices.push(VoiceDef {
+                id,
+                name: v.name.clone(),
+                preset,
+                builtin: false,
+            });
+        }
+        lib
     }
 
     pub fn all(&self) -> &[VoiceDef] {

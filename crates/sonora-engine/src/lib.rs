@@ -10,7 +10,7 @@ pub mod voice;
 
 pub use command::{Command, Param};
 pub use drum::{DrumKind, DrumVoice};
-pub use library::{VoiceDef, VoiceLibrary};
+pub use library::{StoredVoice, VoiceDef, VoiceLibrary};
 pub use pool::VoicePool;
 pub use preset::{builtin_for, Partial, VoicePreset, MAX_PARTIALS};
 pub use render::{fade_envelope, render_offline, RenderCore, OUTPUT_GAIN, SCOPE_LEN};
