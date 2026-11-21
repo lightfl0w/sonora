@@ -15,6 +15,7 @@ sonora-audio = { path = "crates/sonora-audio" }
 sonora-midi = { path = "crates/sonora-midi" }
 sonora-project = { path = "crates/sonora-project" }
 sonora-ui = { path = "crates/sonora-ui" }
+sonora-app = { path = "crates/sonora-app" }
 
 cpal = "0.18.2"
 crossbeam-queue = "0.3.14"
