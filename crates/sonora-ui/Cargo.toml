@@ -3,3 +3,9 @@ name = "sonora-ui"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+
+[dependencies]
+sonora-core = { workspace = true }
+sonora-engine = { workspace = true }
+sonora-project = { workspace = true }
+gpui-fast = { workspace = true }
