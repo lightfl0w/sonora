@@ -416,7 +416,11 @@ impl SonoraApp {
             }
             _ => {}
         }
-        if keystroke.modifiers.modified() {
+        if keystroke.modifiers.control
+            || keystroke.modifiers.alt
+            || keystroke.modifiers.platform
+            || keystroke.modifiers.function
+        {
             return;
         }
         let Some(typed) = keystroke.key_char.as_deref() else {
@@ -1540,7 +1544,11 @@ impl SonoraApp {
             }
             _ => {}
         }
-        if keystroke.modifiers.modified() {
+        if keystroke.modifiers.control
+            || keystroke.modifiers.alt
+            || keystroke.modifiers.platform
+            || keystroke.modifiers.function
+        {
             return;
         }
         let Some(typed) = keystroke.key_char.as_deref() else {
@@ -1798,7 +1806,11 @@ impl SonoraApp {
             }
             _ => {}
         }
-        if keystroke.modifiers.modified() {
+        if keystroke.modifiers.control
+            || keystroke.modifiers.alt
+            || keystroke.modifiers.platform
+            || keystroke.modifiers.function
+        {
             return;
         }
         let Some(typed) = keystroke.key_char.as_deref() else {

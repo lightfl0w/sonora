@@ -47,6 +47,18 @@ fn type_text(cx: &mut VisualTestContext, text: &str) {
     cx.run_until_parked();
 }
 
+fn clear_prompt_buffer(cx: &mut VisualTestContext, app: &Entity<SonoraApp>) {
+    let len = cx
+        .read_entity(app, |a, _| a.debug_save_as_buffer())
+        .unwrap_or_default()
+        .chars()
+        .count();
+    for _ in 0..len {
+        cx.simulate_keystrokes("backspace");
+    }
+    cx.run_until_parked();
+}
+
 fn call<R>(
     cx: &mut VisualTestContext,
     app: &Entity<SonoraApp>,
@@ -180,6 +192,24 @@ fn arrow_keys_do_not_type_into_path_prompt(cx: &mut gpui::TestAppContext) {
         cx.read_entity(&app, |a, _| a.debug_save_as_buffer()),
         Some(before),
         "方向键不应把按键名写进路径输入框"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[gpui::test]
+fn path_prompt_accepts_uppercase_text(cx: &mut gpui::TestAppContext) {
+    let (app, cx) = setup(cx);
+    let dir = temp_dir("uppercase");
+    set_projects_dir(cx, &app, dir.clone());
+    click_element(cx, "menu-文件");
+    click_element(cx, "mi-open");
+    clear_prompt_buffer(cx, &app);
+    let target = "C:\\Temp\\Test.sonora";
+    type_text(cx, target);
+    assert_eq!(
+        cx.read_entity(&app, |a, _| a.debug_save_as_buffer()),
+        Some(target.to_string()),
+        "路径输入框应接受 Shift 输入的大写字母"
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
