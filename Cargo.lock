@@ -5176,6 +5176,7 @@ dependencies = [
  "gpui-fast",
  "gpui-fast-platform",
  "sonora-core",
+ "sonora-engine",
  "sonora-project",
  "sonora-ui",
 ]
