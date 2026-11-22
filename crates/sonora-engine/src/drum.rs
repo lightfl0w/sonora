@@ -26,7 +26,6 @@ impl DrumKind {
             _ => DrumKind::Tom,
         }
     }
-
     fn params(self) -> (f32, f32, f32, f32) {
         match self {
             DrumKind::Kick => (0.95, 0.30, 150.0, 45.0),
@@ -81,7 +80,6 @@ impl DrumVoice {
             active: false,
         }
     }
-
     pub fn trigger(&mut self, midi: u8, dur: f32, level: f32, pan: f32, sr: f32, note_id: u64) {
         let kind = DrumKind::from_midi(midi);
         self.kind = kind;
@@ -89,12 +87,10 @@ impl DrumVoice {
         self.active = true;
         self.sr = sr;
         self.noise_state = (note_id as u32).wrapping_mul(2_654_435_761) | 1;
-
         let pan = pan.clamp(-1.0, 1.0);
         let a = (pan + 1.0) * 0.25 * std::f32::consts::PI;
         self.pan_l = a.cos();
         self.pan_r = a.sin();
-
         let (amp, decay_sec, f0, f1) = kind.params();
         self.level = level * amp;
         self.amp = self.level;
@@ -108,11 +104,9 @@ impl DrumVoice {
         self.burst = if kind == DrumKind::Clap { 3 } else { 0 };
         self.burst_phase = 0.0;
     }
-
     pub fn is_active(&self) -> bool {
         self.active
     }
-
     #[inline]
     fn noise(&mut self) -> f32 {
         let mut x = self.noise_state;
@@ -122,7 +116,6 @@ impl DrumVoice {
         self.noise_state = x;
         (x as f32 / u32::MAX as f32) * 2.0 - 1.0
     }
-
     pub fn render(
         &mut self,
         out_l: &mut [f32],
@@ -134,13 +127,11 @@ impl DrumVoice {
             return false;
         }
         let frames = out_l.len().min(out_r.len());
-
         for n in 0..frames {
             if self.amp <= 0.0 {
                 self.active = false;
                 return false;
             }
-
             let s = match self.kind {
                 DrumKind::Kick | DrumKind::Tom => {
                     self.phase += self.freq / self.sr;
@@ -193,13 +184,11 @@ impl DrumVoice {
                     hp * env
                 }
             };
-
             let sample = s * self.amp;
             out_l[n] += sample * self.pan_l;
             out_r[n] += sample * self.pan_r;
             self.amp -= self.decay * self.level;
         }
-
         self.active
     }
 }
@@ -213,13 +202,10 @@ impl Default for DrumVoice {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     const SR: f32 = 44100.0;
-
     fn table() -> FastSin {
         FastSin::new()
     }
-
     #[test]
     fn gm_midi_maps_to_kinds() {
         assert_eq!(DrumKind::from_midi(36), DrumKind::Kick);
@@ -229,18 +215,15 @@ mod tests {
         assert_eq!(DrumKind::from_midi(39), DrumKind::Clap);
         assert_eq!(DrumKind::from_midi(45), DrumKind::Tom);
     }
-
     #[test]
     fn kick_produces_low_frequency_energy() {
         let t = table();
         let mut v = DrumVoice::new();
         v.trigger(36, 0.25, 1.0, 0.0, SR, 1);
-
         let n = 8192;
         let mut l = vec![0.0f32; n];
         let mut r = vec![0.0f32; n];
         v.render(&mut l, &mut r, SR, &t);
-
         let mut lp = 0.0f32;
         let mut low = 0.0f64;
         let mut all = 0.0f64;
@@ -252,36 +235,33 @@ mod tests {
         let ratio = low / all.max(1e-12);
         assert!(ratio > 0.3, "底鼓低频占比应显著，实际 {ratio:.3}");
     }
-
     #[test]
     fn hihat_is_short() {
         let t = table();
         let mut v = DrumVoice::new();
         v.trigger(42, 0.25, 1.0, 0.0, SR, 1);
-
         let n = 1024;
         let mut l = vec![0.0f32; n];
         let mut r = vec![0.0f32; n];
-
         let mut total = 0;
         while v.is_active() && total < SR as usize {
             v.render(&mut l, &mut r, SR, &t);
             total += n;
         }
-        assert!(total < (SR * 0.3) as usize, "闭镲应在 0.3s 内结束，实际 {total} 帧");
+        assert!(
+            total < (SR * 0.3) as usize,
+            "闭镲应在 0.3s 内结束，实际 {total} 帧"
+        );
     }
-
     #[test]
     fn drums_are_panned() {
         let t = table();
         let mut v = DrumVoice::new();
         v.trigger(36, 0.25, 1.0, -1.0, SR, 1);
-
         let n = 2048;
         let mut l = vec![0.0f32; n];
         let mut r = vec![0.0f32; n];
         v.render(&mut l, &mut r, SR, &t);
-
         let el: f32 = l.iter().map(|s| s * s).sum();
         let er: f32 = r.iter().map(|s| s * s).sum();
         assert!(el > er * 10.0);

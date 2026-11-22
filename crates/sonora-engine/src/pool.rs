@@ -18,7 +18,6 @@ impl VoicePool {
             table: FastSin::new(),
         }
     }
-
     #[allow(clippy::too_many_arguments)]
     pub fn trigger_sine(
         &mut self,
@@ -34,12 +33,18 @@ impl VoicePool {
         let seed = (note_id as f32).sin().abs();
         self.voices[idx].trigger(preset, freq, dur, level, pan, sr, note_id, seed);
     }
-
-    pub fn trigger_drum(&mut self, midi: u8, dur: f32, level: f32, pan: f32, sr: f32, note_id: u64) {
+    pub fn trigger_drum(
+        &mut self,
+        midi: u8,
+        dur: f32,
+        level: f32,
+        pan: f32,
+        sr: f32,
+        note_id: u64,
+    ) {
         let idx = self.pick_drum_slot();
         self.drums[idx].trigger(midi, dur, level, pan, sr, note_id);
     }
-
     fn pick_slot(&self) -> usize {
         for (i, v) in self.voices.iter().enumerate() {
             if !v.is_active() {
@@ -54,7 +59,6 @@ impl VoicePool {
         }
         oldest
     }
-
     fn pick_drum_slot(&self) -> usize {
         for (i, v) in self.drums.iter().enumerate() {
             if !v.is_active() {
@@ -69,7 +73,6 @@ impl VoicePool {
         }
         oldest
     }
-
     pub fn render(&mut self, out_l: &mut [f32], out_r: &mut [f32], sr: f32) {
         for v in self.voices.iter_mut() {
             if v.is_active() {
@@ -82,12 +85,10 @@ impl VoicePool {
             }
         }
     }
-
     pub fn active_count(&self) -> usize {
         self.voices.iter().filter(|v| v.is_active()).count()
             + self.drums.iter().filter(|v| v.is_active()).count()
     }
-
     pub fn all_off(&mut self) {
         for v in self.voices.iter_mut() {
             v.active = false;
@@ -102,14 +103,11 @@ impl VoicePool {
 mod tests {
     use super::*;
     use crate::preset;
-
     const SR: f32 = 44100.0;
-
     #[test]
     fn pool_reuses_idle_voices() {
         let mut pool = VoicePool::new(4);
         pool.trigger_sine(&preset::piano(), 440.0, 0.05, 1.0, 0.0, SR, 1);
-
         let n = 256;
         let mut l = vec![0.0f32; n];
         let mut r = vec![0.0f32; n];
@@ -118,11 +116,9 @@ mod tests {
             l.fill(0.0);
             r.fill(0.0);
         }
-
         pool.trigger_sine(&preset::piano(), 440.0, 1.0, 1.0, 0.0, SR, 2);
         assert_eq!(pool.active_count(), 1);
     }
-
     #[test]
     fn pool_never_exceeds_capacity() {
         let mut pool = VoicePool::new(3);
@@ -131,30 +127,29 @@ mod tests {
         }
         assert!(pool.active_count() <= 3);
     }
-
     #[test]
     fn all_off_silences_everything() {
         let mut pool = VoicePool::new(8);
         pool.trigger_sine(&preset::piano(), 440.0, 2.0, 1.0, 0.0, SR, 1);
         pool.trigger_drum(36, 0.3, 1.0, 0.0, SR, 2);
         assert!(pool.active_count() > 0);
-
         pool.all_off();
         assert_eq!(pool.active_count(), 0);
     }
-
     #[test]
     fn mixed_sine_and_drums_render() {
         let mut pool = VoicePool::new(8);
         pool.trigger_sine(&preset::piano(), 440.0, 1.0, 1.0, 0.0, SR, 1);
         pool.trigger_drum(36, 0.3, 1.0, 0.0, SR, 2);
-
         let n = 4096;
         let mut l = vec![0.0f32; n];
         let mut r = vec![0.0f32; n];
         pool.render(&mut l, &mut r, SR);
-
-        let peak = l.iter().chain(r.iter()).map(|s| s.abs()).fold(0.0f32, f32::max);
+        let peak = l
+            .iter()
+            .chain(r.iter())
+            .map(|s| s.abs())
+            .fold(0.0f32, f32::max);
         assert!(peak > 0.001);
     }
 }

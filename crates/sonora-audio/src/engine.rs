@@ -1,8 +1,8 @@
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 
-use crossbeam_queue::ArrayQueue;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+use crossbeam_queue::ArrayQueue;
 use sonora_core::Song;
 use sonora_engine::command::Command;
 use sonora_engine::library::VoiceLibrary;
@@ -34,24 +34,19 @@ impl AudioEngine {
             .description()
             .map(|d| d.name().to_string())
             .unwrap_or_else(|_| "未知设备".to_string());
-
         let supported = device
             .default_output_config()
             .map_err(|e| AudioError::Config(e.to_string()))?;
-
         let sr = supported.sample_rate();
         let channels = supported.channels();
         let config = supported.config();
         let format = supported.sample_format();
-
         let queue = Arc::new(ArrayQueue::new(QUEUE_CAP));
         let scope: Arc<[AtomicU32; SCOPE_LEN]> =
             Arc::new(std::array::from_fn(|_| AtomicU32::new(0)));
         let scope_write = Arc::new(AtomicU32::new(0));
-
         let core = RenderCore::new(song, sr as f32, scope.clone(), Arc::new(lib));
         let transport = core.transport.clone();
-
         let stream = match format {
             cpal::SampleFormat::F32 => build_f32_stream(
                 &device,
@@ -71,11 +66,7 @@ impl AudioEngine {
             )?,
             other => return Err(AudioError::UnsupportedFormat(format!("{other:?}"))),
         };
-
-        stream
-            .play()
-            .map_err(|e| AudioError::Play(e.to_string()))?;
-
+        stream.play().map_err(|e| AudioError::Play(e.to_string()))?;
         Ok(Self {
             queue,
             stream: Some(stream),
@@ -87,15 +78,12 @@ impl AudioEngine {
             channels,
         })
     }
-
     pub fn send(&self, cmd: Command) {
         let _ = self.queue.push(cmd);
     }
-
     pub fn is_playing(&self) -> bool {
         self.transport.is_playing()
     }
-
     pub fn scope_snapshot(&self, out: &mut Vec<f32>) {
         let end = self.scope_write.load(Ordering::Relaxed) as usize % SCOPE_LEN;
         out.clear();
@@ -132,13 +120,13 @@ impl Shared {
             r: vec![0.0; MAX_BLOCK_FRAMES],
         }
     }
-
     fn fill(&mut self, sample_count: usize) -> usize {
         let frames = (sample_count / self.channels).min(MAX_BLOCK_FRAMES);
         while let Some(cmd) = self.queue.pop() {
             self.core.handle(cmd);
         }
-        self.core.render(&mut self.l[..frames], &mut self.r[..frames]);
+        self.core
+            .render(&mut self.l[..frames], &mut self.r[..frames]);
         self.scope_write
             .store(self.core.scope_write_index() as u32, Ordering::Relaxed);
         frames
@@ -154,7 +142,6 @@ fn build_f32_stream(
     channels: usize,
 ) -> Result<cpal::Stream, AudioError> {
     let mut shared = Shared::new(core, queue, scope_write, channels);
-
     device
         .build_output_stream(
             config,
@@ -186,7 +173,6 @@ fn build_i16_stream(
     channels: usize,
 ) -> Result<cpal::Stream, AudioError> {
     let mut shared = Shared::new(core, queue, scope_write, channels);
-
     device
         .build_output_stream(
             config,

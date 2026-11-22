@@ -1,13 +1,17 @@
+use std::path::PathBuf;
 use std::process::ExitCode;
 
-use sonora_app::cli::{help, parse, Action};
+use gpui::{AppContext as _, Bounds, WindowBounds, WindowOptions, px, size};
+use sonora_app::cli::{Action, help, parse};
 use sonora_app::{load_project, render_to_wav, summary};
+use sonora_project::Project;
+use sonora_ui::app::SonoraApp;
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().collect();
 
     let action = match parse(args) {
-        Ok(a) => a,
+        Ok(action) => action,
         Err(e) => {
             eprintln!("错误：{e}");
             eprintln!();
@@ -26,8 +30,8 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         Action::Inspect { project } => match load_project(&project) {
-            Ok(p) => {
-                print!("{}", summary(&p));
+            Ok(project) => {
+                print!("{}", summary(&project));
                 ExitCode::SUCCESS
             }
             Err(e) => {
@@ -40,7 +44,7 @@ fn main() -> ExitCode {
             out,
             sample_rate,
         } => match load_project(&project) {
-            Ok(p) => match render_to_wav(&p, &out, sample_rate) {
+            Ok(project) => match render_to_wav(&project, &out, sample_rate) {
                 Ok(frames) => {
                     let secs = frames as f32 / sample_rate as f32;
                     println!(
@@ -62,14 +66,46 @@ fn main() -> ExitCode {
                 ExitCode::FAILURE
             }
         },
-        Action::Open { project } => {
-            if let Err(e) = load_project(&project) {
-                eprintln!("错误：{e}");
+        Action::Open { project } => run_gui(project),
+    }
+}
+
+fn run_gui(path: Option<PathBuf>) -> ExitCode {
+    let project = match &path {
+        Some(path) => match load_project(path) {
+            Ok(project) => {
+                println!("已载入 {}", path.display());
+                project
+            }
+            Err(e) => {
+                eprintln!("无法载入 {}：{e}", path.display());
                 return ExitCode::FAILURE;
             }
-            eprintln!("图形界面尚未实现（将在后续版本提供）");
-            eprintln!("当前可用：--render、--inspect、--version、--help");
-            ExitCode::FAILURE
-        }
-    }
+        },
+        None => Project::default(),
+    };
+
+    gpui_platform::application().run(move |cx| {
+        let bounds = Bounds::centered(None, size(px(1280.0), px(800.0)), cx);
+        let options = WindowOptions {
+            window_bounds: Some(WindowBounds::Windowed(bounds)),
+            window_min_size: Some(size(px(900.0), px(560.0))),
+            window_decorations: Some(gpui::WindowDecorations::Client),
+            ..sonora_ui::titlebar::TitleBar::window_options()
+        };
+        cx.open_window(options, |_window, cx| {
+            cx.new(|cx| {
+                let mut app = SonoraApp::new(project, cx);
+                if let Some(path) = &path {
+                    app = app.with_path(path.clone());
+                }
+                app.enable_default_voice_persistence();
+                app.start_audio();
+                app
+            })
+        })
+        .expect("无法创建窗口");
+    });
+
+    ExitCode::SUCCESS
 }

@@ -1,5 +1,5 @@
-use sonora_core::{Song, VoiceId};
 use serde::{Deserialize, Serialize};
+use sonora_core::{Song, VoiceId};
 
 use crate::library::VoiceLibrary;
 use crate::preset::VoicePreset;
@@ -24,6 +24,9 @@ pub enum Command {
     UpdateVoices(VoiceLibrary),
     PreviewPreset(Box<VoicePreset>, u8),
     PreviewVoice(VoiceId, u8),
+    SetLoop(Option<(f32, f32)>),
+    SetMetronome(bool),
+    SetCountIn(u32),
     AllOff,
 }
 
@@ -38,6 +41,10 @@ impl std::fmt::Debug for Command {
             Command::UpdateVoices(_) => write!(f, "UpdateVoices"),
             Command::PreviewPreset(_, midi) => write!(f, "PreviewPreset({midi})"),
             Command::PreviewVoice(id, midi) => write!(f, "PreviewVoice({id}, {midi})"),
+            Command::SetLoop(Some((a, b))) => write!(f, "SetLoop({a}..{b})"),
+            Command::SetLoop(None) => write!(f, "SetLoop(off)"),
+            Command::SetMetronome(on) => write!(f, "SetMetronome({on})"),
+            Command::SetCountIn(n) => write!(f, "SetCountIn({n})"),
             Command::AllOff => write!(f, "AllOff"),
         }
     }
@@ -46,20 +53,17 @@ impl std::fmt::Debug for Command {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn param_carries_values() {
         assert_eq!(Param::Master(0.5), Param::Master(0.5));
         assert_ne!(Param::Master(0.5), Param::Master(0.6));
         assert_eq!(Param::TrackLevel(2, 0.7), Param::TrackLevel(2, 0.7));
     }
-
     #[test]
     fn debug_is_readable() {
         assert_eq!(format!("{:?}", Command::Seek(4.5)), "Seek(4.5)");
         assert_eq!(format!("{:?}", Command::Play), "Play");
     }
-
     #[test]
     fn param_serializes_for_ui_bridge() {
         let json = serde_json::to_string(&Param::Bpm(120.0)).unwrap();

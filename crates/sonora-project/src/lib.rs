@@ -2,7 +2,7 @@ mod error;
 mod project;
 
 pub use error::ProjectError;
-pub use project::{with_extension, Project, EXTENSION, FORMAT, VERSION};
+pub use project::{EXTENSION, FORMAT, Project, VERSION, with_extension};
 
 #[cfg(test)]
 mod tests {
@@ -11,7 +11,6 @@ mod tests {
     use sonora_core::song::{Note, Track};
     use sonora_core::voice::builtin;
     use sonora_engine::VoiceLibrary;
-
     fn sample() -> Project {
         let mut song = sonora_core::Song::empty();
         song.bpm = 96.0;
@@ -24,18 +23,15 @@ mod tests {
             vel: 0.75,
         });
         song.tracks.push(Track::new(builtin::BASS, false, 0.6));
-
         let mut project = Project::with_song(song, sonora_core::Scale::new(2, Mode::Dorian));
         project.title = "测试工程".into();
         project
     }
-
     #[test]
     fn roundtrip_preserves_song() {
         let project = sample();
         let bytes = project.to_bytes().unwrap();
         let back = Project::from_bytes(&bytes).unwrap();
-
         assert_eq!(back.title, "测试工程");
         assert_eq!(back.song.bpm, 96.0);
         assert_eq!(back.song.bars, 8);
@@ -45,7 +41,6 @@ mod tests {
         assert_eq!(back.scale.root, 2);
         assert_eq!(back.scale.mode, Mode::Dorian);
     }
-
     #[test]
     fn empty_project_is_valid() {
         let p = Project::empty();
@@ -54,19 +49,16 @@ mod tests {
         assert_eq!(back.format, FORMAT);
         assert_eq!(back.version, VERSION);
     }
-
     #[test]
     fn rejects_foreign_json() {
         let err = Project::from_bytes(br#"{"hello":"world"}"#).unwrap_err();
         assert!(matches!(err, ProjectError::NotProject));
     }
-
     #[test]
     fn rejects_other_format_name() {
         let err = Project::from_bytes(br#"{"format":"other-daw","version":1}"#).unwrap_err();
         assert!(matches!(err, ProjectError::WrongFormat { .. }));
     }
-
     #[test]
     fn rejects_newer_version() {
         let json = format!(r#"{{"format":"{FORMAT}","version":99}}"#);
@@ -79,13 +71,11 @@ mod tests {
             other => panic!("期望 NewerVersion，实际 {other:?}"),
         }
     }
-
     #[test]
     fn rejects_garbage() {
         assert!(Project::from_bytes(b"not json at all").is_err());
         assert!(Project::from_bytes(b"").is_err());
     }
-
     #[test]
     fn sanitize_clamps_corrupt_values() {
         let json = format!(
@@ -95,36 +85,29 @@ mod tests {
             "master":7.0,"reverb_size":-2.0,"reverb_damp":2.0,"reverb_wet":9.0}}}}"#
         );
         let p = Project::from_bytes(json.as_bytes()).unwrap();
-
         assert_eq!(p.song.bpm, 20.0);
         assert_eq!(p.song.bars, 1);
         assert_eq!(p.song.master, 1.0);
         assert!(p.song.reverb_wet <= 1.0);
-
         let note = &p.song.tracks[0].notes[0];
         assert_eq!(note.bar, 1);
         assert_eq!(note.beat, 4.0);
         assert_eq!(note.midi, 127);
         assert!(note.vel <= 1.0);
     }
-
     #[test]
     fn endian_safe_on_disk() {
         let dir = std::env::temp_dir().join("sonora-project-test");
         let _ = std::fs::remove_dir_all(&dir);
         let path = dir.join("demo.sonora");
-
         let project = sample();
         project.save(&path).unwrap();
         assert!(path.exists(), "工程文件应已写入");
-
         let back = Project::load(&path).unwrap();
         assert_eq!(back.song.total_notes(), 1);
         assert_eq!(back.title, "测试工程");
-
         let _ = std::fs::remove_dir_all(&dir);
     }
-
     #[test]
     fn missing_file_reports_path() {
         let path = std::env::temp_dir().join("sonora-does-not-exist-xyz.sonora");
@@ -134,32 +117,31 @@ mod tests {
             other => panic!("期望 Read，实际 {other:?}"),
         }
     }
-
     #[test]
     fn user_voices_are_embedded() {
         let mut lib = VoiceLibrary::builtins();
         let id = lib.create_from(builtin::PIANO, "我的音色".into());
-
         let mut project = sample();
         project.voices = lib.export_user();
-
         let back = Project::from_bytes(&project.to_bytes().unwrap()).unwrap();
         assert_eq!(back.voices.len(), 1);
         assert_eq!(back.voices[0].name, "我的音色");
-
         let restored = VoiceLibrary::with_user_voices(&back.voices);
         assert_eq!(restored.name(id), "我的音色");
     }
-
     #[test]
     fn extension_is_added_only_when_missing() {
         let bare = std::path::Path::new("song");
-        assert_eq!(with_extension(bare), std::path::PathBuf::from("song.sonora"));
-
+        assert_eq!(
+            with_extension(bare),
+            std::path::PathBuf::from("song.sonora")
+        );
         let named = std::path::Path::new("song.sonora");
-        assert_eq!(with_extension(named), std::path::PathBuf::from("song.sonora"));
+        assert_eq!(
+            with_extension(named),
+            std::path::PathBuf::from("song.sonora")
+        );
     }
-
     #[test]
     fn display_name_falls_back() {
         let mut p = Project::empty();
@@ -167,5 +149,41 @@ mod tests {
         assert_eq!(p.display_name(), "未命名工程");
         p.title = "真正名字".into();
         assert_eq!(p.display_name(), "真正名字");
+    }
+    #[test]
+    fn default_path_is_safe_and_has_extension() {
+        let path = Project::default_path_for("我的工程");
+        assert_eq!(
+            path.file_name().unwrap().to_string_lossy(),
+            "我的工程.sonora"
+        );
+        assert!(
+            path.to_string_lossy().contains("projects"),
+            "默认应落在 projects 目录里：{}",
+            path.display()
+        );
+    }
+    #[test]
+    fn illegal_characters_are_replaced_in_file_names() {
+        let name = Project::file_name_for("a/b\\c:d*e?f\"g<h>i|j");
+        assert_eq!(name, "a_b_c_d_e_f_g_h_i_j.sonora");
+        assert_eq!(Project::file_name_for("   "), "未命名工程.sonora");
+        assert_eq!(Project::file_name_for("..."), "未命名工程.sonora");
+    }
+    #[test]
+    fn loop_region_is_persisted() {
+        let mut project = sample();
+        project.loop_bars = Some((1.0, 3.5));
+        project.loop_enabled = true;
+        let back = Project::from_bytes(&project.to_bytes().unwrap()).unwrap();
+        assert_eq!(back.loop_bars, Some((1.0, 3.5)));
+        assert!(back.loop_enabled);
+        let mut value: serde_json::Value =
+            serde_json::from_slice(&project.to_bytes().unwrap()).unwrap();
+        value.as_object_mut().unwrap().remove("loop_bars");
+        value.as_object_mut().unwrap().remove("loop_enabled");
+        let legacy = Project::from_bytes(&serde_json::to_vec(&value).unwrap()).unwrap();
+        assert_eq!(legacy.loop_bars, None);
+        assert!(!legacy.loop_enabled);
     }
 }

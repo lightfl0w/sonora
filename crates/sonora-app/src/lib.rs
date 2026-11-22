@@ -5,8 +5,8 @@ use std::path::Path;
 use std::sync::Arc;
 
 use sonora_core::pitch_name;
-use sonora_engine::render_offline;
 use sonora_engine::VoiceLibrary;
+use sonora_engine::render_offline;
 use sonora_project::{Project, ProjectError};
 
 #[derive(Debug)]
@@ -70,7 +70,12 @@ pub fn summary(project: &Project) -> String {
         song.bars,
         song.bpm
     );
-    let _ = writeln!(out, "轨道：{}　音符：{}", song.tracks.len(), song.total_notes());
+    let _ = writeln!(
+        out,
+        "轨道：{}　音符：{}",
+        song.tracks.len(),
+        song.total_notes()
+    );
     let _ = writeln!(out, "用户音色：{}", project.voices.len());
     let _ = writeln!(out, "主音量：{:.0}%", song.master * 100.0);
     let _ = writeln!(
@@ -111,12 +116,7 @@ pub fn summary(project: &Project) -> String {
     }
 
     if let Some((lo, hi)) = pitch_range(project) {
-        let _ = writeln!(
-            out,
-            "音域：{} – {}",
-            pitch_name(lo),
-            pitch_name(hi)
-        );
+        let _ = writeln!(out, "音域：{} – {}", pitch_name(lo), pitch_name(hi));
     }
 
     out
@@ -152,10 +152,10 @@ fn pitch_range(project: &Project) -> Option<(u8, u8)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sonora_core::Scale;
     use sonora_core::scale::Mode;
     use sonora_core::song::{Note, Track};
     use sonora_core::voice::builtin;
-    use sonora_core::Scale;
 
     fn demo() -> Project {
         let mut song = sonora_core::Song::empty();

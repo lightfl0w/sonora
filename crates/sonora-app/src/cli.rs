@@ -7,7 +7,7 @@ pub enum Action {
     Help,
     Version,
     Open {
-        project: PathBuf,
+        project: Option<PathBuf>,
     },
     Render {
         project: PathBuf,
@@ -45,7 +45,7 @@ pub fn help() -> String {
 基于正弦波加法合成的音乐工作站。
 
 用法:
-  {NAME} <工程文件>                      打开图形界面
+  {NAME} [工程文件]                      打开图形界面（省略则新建空白工程）
   {NAME} --render <工程文件> [-o 输出]   离线渲染为 WAV
   {NAME} --inspect <工程文件>            打印工程概要
   {NAME} --version                       显示版本
@@ -102,13 +102,13 @@ pub fn parse<I: IntoIterator<Item = String>>(args: I) -> Result<Action, CliError
         }
     }
 
-    let project = input.ok_or(CliError::NoInput)?;
-
     if inspect {
+        let project = input.ok_or(CliError::NoInput)?;
         return Ok(Action::Inspect { project });
     }
 
     if render {
+        let project = input.ok_or(CliError::NoInput)?;
         let out = out.unwrap_or_else(|| project.with_extension("wav"));
         return Ok(Action::Render {
             project,
@@ -117,7 +117,7 @@ pub fn parse<I: IntoIterator<Item = String>>(args: I) -> Result<Action, CliError
         });
     }
 
-    Ok(Action::Open { project })
+    Ok(Action::Open { project: input })
 }
 
 #[cfg(test)]
@@ -154,7 +154,9 @@ mod tests {
 
     #[test]
     fn explicit_output_and_rate() {
-        match run(&["sonora", "--render", "a.sonora", "-o", "b.wav", "-r", "48000"]) {
+        match run(&[
+            "sonora", "--render", "a.sonora", "-o", "b.wav", "-r", "48000",
+        ]) {
             Ok(Action::Render {
                 out, sample_rate, ..
             }) => {
@@ -174,8 +176,15 @@ mod tests {
     }
 
     #[test]
+    fn missing_input_opens_empty_gui() {
+        assert!(matches!(
+            run(&["sonora"]),
+            Ok(Action::Open { project: None })
+        ));
+    }
+
+    #[test]
     fn rejects_bad_input() {
-        assert!(matches!(run(&["sonora"]), Err(CliError::NoInput)));
         assert!(matches!(
             run(&["sonora", "--nope"]),
             Err(CliError::UnknownFlag(_))
@@ -201,7 +210,9 @@ mod tests {
     #[test]
     fn bare_path_opens_project() {
         match run(&["sonora", "a.sonora"]) {
-            Ok(Action::Open { project }) => assert_eq!(project, PathBuf::from("a.sonora")),
+            Ok(Action::Open {
+                project: Some(project),
+            }) => assert_eq!(project, PathBuf::from("a.sonora")),
             _ => panic!("期望 Open"),
         }
     }

@@ -2,7 +2,12 @@ use std::path::Path;
 
 pub const BITS_PER_SAMPLE: u16 = 16;
 
-pub fn write_wav(path: &Path, left: &[f32], right: &[f32], sample_rate: u32) -> std::io::Result<()> {
+pub fn write_wav(
+    path: &Path,
+    left: &[f32],
+    right: &[f32],
+    sample_rate: u32,
+) -> std::io::Result<()> {
     use std::io::Write;
 
     let frames = left.len().min(right.len());

@@ -1,1 +1,6 @@
 /target
+
+/projects/
+sonora-voices.json
+*.autosave.sonora
+export.wav
