@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use gpui::{
-    div, px, rgb, AnimationExt as _, App, ClickEvent, ElementId, InteractiveElement, IntoElement,
-    ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window,
+    AnimationExt as _, App, ClickEvent, ElementId, InteractiveElement, IntoElement, ParentElement,
+    RenderOnce, StatefulInteractiveElement, Styled, Window, div, px, rgb,
 };
 
 use crate::theme::{self, FONT_MD, FONT_SM, RADIUS_MD, RADIUS_SM};
@@ -49,49 +49,40 @@ impl Select {
             on_toggle: None,
         }
     }
-
     pub fn selected(mut self, value: u32) -> Self {
         self.selected = Some(value);
         self
     }
-
     pub fn placeholder(mut self, text: impl Into<String>) -> Self {
         self.placeholder = text.into();
         self
     }
-
     pub fn width(mut self, width: f32) -> Self {
         self.width = Some(width);
         self
     }
-
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
     }
-
     pub fn open(mut self, open: bool) -> Self {
         self.open = open;
         self
     }
-
     pub fn on_select(mut self, handler: impl Fn(u32, &mut Window, &mut App) + 'static) -> Self {
         self.on_select = Some(std::rc::Rc::new(handler));
         self
     }
-
     pub fn on_toggle(mut self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
         self.on_toggle = Some(Box::new(handler));
         self
     }
-
     pub fn current_label(&self) -> String {
         self.selected
             .and_then(|v| self.options.iter().find(|o| o.value == v))
             .map(|o| o.label.clone())
             .unwrap_or_else(|| self.placeholder.clone())
     }
-
     pub fn has_selection(&self) -> bool {
         self.selected
             .map(|v| self.options.iter().any(|o| o.value == v))
@@ -106,14 +97,11 @@ impl RenderOnce for Select {
         let open = self.open;
         let current = self.current_label();
         let muted = !self.has_selection();
-
         let width = self.width;
-
         let arrow = div()
             .text_size(px(9.0))
             .text_color(rgb(p.text_faint))
-            .child(if open { "▲" } else { "▼" });
-
+            .child(if open { "^" } else { "v" });
         let mut head = div()
             .flex()
             .flex_row()
@@ -138,24 +126,19 @@ impl RenderOnce for Select {
             })
             .child(div().truncate().child(current))
             .child(arrow);
-
         if let Some(w) = width {
             head = head.w(px(w));
         }
-
         let mut el = head
             .id(self.id.clone())
             .cursor_pointer()
             .active(|style| style.opacity(0.72));
-
         if let Some(handler) = self.on_toggle {
             el = el.on_click(move |_: &ClickEvent, window: &mut Window, cx: &mut App| {
                 handler(window, cx);
             });
         }
-
         let head = el;
-
         let mut menu = div()
             .absolute()
             .top(px(34.0))
@@ -169,17 +152,13 @@ impl RenderOnce for Select {
             .bg(rgb(p.popover))
             .shadow_lg()
             .min_w(px(width.unwrap_or(150.0)));
-
         let select_handler = self.on_select.clone();
-
         for option in self.options {
             let is_selected = Some(option.value) == self.selected;
             let value = option.value;
             let label = option.label;
             let handler = select_handler.clone();
-
             let hover_bg = theme::alpha(p.border_base, p.border_a * 3.0);
-
             let mut item = div()
                 .id(ElementId::Name(format!("opt-{}", value).into()))
                 .flex()
@@ -205,43 +184,35 @@ impl RenderOnce for Select {
                         .flex_shrink_0()
                         .text_size(px(10.0))
                         .text_color(rgb(p.accent))
-                        .child("✓")
+                        .child(" ")
                         .into_any_element()
                 } else {
                     div().into_any_element()
                 });
-
             if let Some(handler) = handler {
                 item = item.on_click(move |_: &ClickEvent, window: &mut Window, cx: &mut App| {
                     handler(value, window, cx);
                 });
             }
-
             menu = menu.child(item);
         }
-
-        let root = div()
-            .relative()
-            .child(head)
-            .child(if open {
-                let menu_id = self.id.clone();
-                gpui::deferred(
-                    menu.with_animation(
-                        ElementId::NamedChild(Arc::new(menu_id), "menu".into()),
-                        gpui::Animation::new(std::time::Duration::from_millis(140))
-                            .with_easing(gpui::ease_out_quint()),
-                        |el, t| el.opacity(t),
-                    ),
-                )
-                .with_priority(10)
-            } else {
-                gpui::deferred(div())
-            });
-
+        let root = div().relative().child(head).child(if open {
+            let menu_id = self.id.clone();
+            gpui::deferred(
+                menu.with_animation(
+                    ElementId::NamedChild(Arc::new(menu_id), "menu".into()),
+                    gpui::Animation::new(std::time::Duration::from_millis(140))
+                        .with_easing(gpui::ease_out_quint()),
+                    |el, t| el.opacity(t),
+                ),
+            )
+            .with_priority(10)
+        } else {
+            gpui::deferred(div())
+        });
         if disabled {
             return root.opacity(0.45).into_any_element();
         }
-
         root.into_any_element()
     }
 }
@@ -253,7 +224,6 @@ pub fn select(id: impl Into<ElementId>, options: Vec<Option_>) -> Select {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     fn opts() -> Vec<Option_> {
         vec![
             Option_::new(0, "大调"),
@@ -261,35 +231,30 @@ mod tests {
             Option_::new(2, "多利亚"),
         ]
     }
-
     #[test]
     fn label_shows_selected_option() {
         let s = Select::new("t", opts()).selected(1);
         assert_eq!(s.current_label(), "小调");
         assert!(s.has_selection());
     }
-
     #[test]
     fn placeholder_when_unselected() {
         let s = Select::new("t", opts()).placeholder("选择调式");
         assert_eq!(s.current_label(), "选择调式");
         assert!(!s.has_selection());
     }
-
     #[test]
     fn unknown_value_falls_back_to_placeholder() {
         let s = Select::new("t", opts()).selected(99).placeholder("无");
         assert_eq!(s.current_label(), "无");
         assert!(!s.has_selection());
     }
-
     #[test]
     fn empty_options_use_placeholder() {
         let s = Select::new("t", Vec::new()).selected(0).placeholder("空");
         assert_eq!(s.current_label(), "空");
         assert!(!s.has_selection());
     }
-
     #[test]
     fn builder_sets_fields() {
         let s = Select::new("t", opts())

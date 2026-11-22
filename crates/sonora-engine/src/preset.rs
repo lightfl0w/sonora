@@ -59,15 +59,12 @@ impl VoicePreset {
             level,
         }
     }
-
     pub fn active_partials(&self) -> &[Partial] {
         &self.partials[..self.count.min(MAX_PARTIALS)]
     }
-
     pub fn is_slow_attack(&self) -> bool {
         self.attack >= 0.2
     }
-
     pub fn clamp_params(&mut self) {
         self.count = self.count.min(MAX_PARTIALS);
         self.attack = self.attack.clamp(0.0005, 4.0);
@@ -195,6 +192,16 @@ pub fn drums() -> VoicePreset {
     VoicePreset::silent(0.5)
 }
 
+pub fn click(accent: bool) -> VoicePreset {
+    let mut preset = VoicePreset::silent(if accent { 0.16 } else { 0.10 });
+    preset.partials[0] = p(1.0, 1.0, 0.2, 0.0);
+    preset.count = 1;
+    preset.attack = 0.001;
+    preset.release = 0.045;
+    preset.cutoff = 12000.0;
+    preset
+}
+
 pub fn builtin_for(id: sonora_core::VoiceId) -> VoicePreset {
     use sonora_core::voice::builtin as b;
     match id {
@@ -212,7 +219,6 @@ pub fn builtin_for(id: sonora_core::VoiceId) -> VoicePreset {
 mod tests {
     use super::*;
     use sonora_core::voice::builtin;
-
     #[test]
     fn builtin_presets_have_active_partials() {
         for id in builtin::ALL {
@@ -224,7 +230,6 @@ mod tests {
             assert!(preset.count <= MAX_PARTIALS);
         }
     }
-
     #[test]
     fn clamp_keeps_params_in_range() {
         let mut preset = VoicePreset::silent(99.0);
@@ -234,7 +239,6 @@ mod tests {
         preset.partials[0].ratio = 100.0;
         preset.partials[0].gain = 5.0;
         preset.clamp_params();
-
         assert_eq!(preset.count, MAX_PARTIALS);
         assert!(preset.attack >= 0.0005);
         assert!(preset.cutoff <= 16000.0);
@@ -242,19 +246,16 @@ mod tests {
         assert!(preset.partials[0].gain <= 1.0);
         assert!(preset.level <= 0.5);
     }
-
     #[test]
     fn slow_attack_detected() {
         assert!(strings().is_slow_attack());
         assert!(!piano().is_slow_attack());
     }
-
     #[test]
     fn active_partials_respect_count() {
         let preset = piano();
         assert_eq!(preset.active_partials().len(), preset.count);
     }
-
     #[test]
     fn save_and_load_roundtrip() {
         let preset = strings();
@@ -262,6 +263,9 @@ mod tests {
         let back: VoicePreset = serde_json::from_str(&json).unwrap();
         assert_eq!(back.count, preset.count);
         assert!((back.attack - preset.attack).abs() < 1e-6);
-        assert_eq!(back.partials[0].detune_cents, preset.partials[0].detune_cents);
+        assert_eq!(
+            back.partials[0].detune_cents,
+            preset.partials[0].detune_cents
+        );
     }
 }

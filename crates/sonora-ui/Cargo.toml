@@ -8,4 +8,10 @@ license.workspace = true
 sonora-core = { workspace = true }
 sonora-engine = { workspace = true }
 sonora-project = { workspace = true }
+sonora-audio = { workspace = true }
+sonora-midi = { workspace = true }
 gpui-fast = { workspace = true }
+
+[dev-dependencies]
+gpui-fast-platform = { workspace = true }
+gpui-fast = { workspace = true, features = ["test-support"] }

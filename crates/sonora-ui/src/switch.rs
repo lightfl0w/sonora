@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use gpui::{
-    div, px, rgb, AnimationExt as _, App, ClickEvent, ElementId, InteractiveElement, IntoElement,
-    ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window,
+    AnimationExt as _, App, ClickEvent, ElementId, InteractiveElement, IntoElement, ParentElement,
+    RenderOnce, StatefulInteractiveElement, Styled, Window, div, px, rgb,
 };
 
 use crate::theme::{self, FONT_MD};
@@ -26,17 +26,14 @@ impl Switch {
             on_toggle: None,
         }
     }
-
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.label = Some(label.into());
         self
     }
-
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
     }
-
     pub fn on_toggle(mut self, handler: impl Fn(bool, &mut Window, &mut App) + 'static) -> Self {
         self.on_toggle = Some(Box::new(handler));
         self
@@ -53,13 +50,11 @@ impl RenderOnce for Switch {
         let checked = self.checked;
         let switch_id = self.id.clone();
         let disabled = self.disabled;
-
         let track_bg = if checked {
             rgb(p.accent)
         } else {
             theme::alpha(p.border_base, p.border_a * 3.0)
         };
-
         let knob = div()
             .absolute()
             .top(px((TRACK_H - KNOB_SIZE) / 2.0))
@@ -79,7 +74,6 @@ impl RenderOnce for Switch {
                     el.left(px(from + (to - from) * delta))
                 },
             );
-
         let track = div()
             .relative()
             .flex_shrink_0()
@@ -88,7 +82,6 @@ impl RenderOnce for Switch {
             .rounded(px(TRACK_H / 2.0))
             .bg(track_bg)
             .child(knob);
-
         let mut control = div()
             .id(self.id)
             .flex()
@@ -98,7 +91,6 @@ impl RenderOnce for Switch {
             .cursor_pointer()
             .active(|style| style.opacity(0.72))
             .child(track);
-
         if let Some(label) = self.label {
             control = control.child(
                 div()
@@ -107,20 +99,16 @@ impl RenderOnce for Switch {
                     .child(label),
             );
         }
-
         if disabled {
             return control.opacity(0.45).into_any_element();
         }
-
         if let Some(handler) = self.on_toggle {
             let next = !checked;
-            control = control.on_click(
-                move |_ev: &ClickEvent, window: &mut Window, cx: &mut App| {
+            control =
+                control.on_click(move |_ev: &ClickEvent, window: &mut Window, cx: &mut App| {
                     handler(next, window, cx);
-                },
-            );
+                });
         }
-
         control.into_any_element()
     }
 }
@@ -141,7 +129,6 @@ pub fn knob_left(checked: bool) -> f32 {
 mod tests {
     use super::*;
     use crate::theme::FONT_SM;
-
     #[test]
     fn knob_moves_between_ends() {
         let off = knob_left(false);
@@ -150,19 +137,16 @@ mod tests {
         assert!(off >= 0.0);
         assert!(on + KNOB_SIZE <= TRACK_W);
     }
-
     #[test]
     fn knob_is_vertically_centered() {
         let top = (TRACK_H - KNOB_SIZE) / 2.0;
         assert!(top >= 0.0);
         assert!((top * 2.0 + KNOB_SIZE - TRACK_H).abs() < 1e-6);
     }
-
     #[test]
     fn track_is_wide_enough_for_knob() {
         assert!(TRACK_W > KNOB_SIZE + 4.0);
     }
-
     #[test]
     fn label_size_uses_theme_token() {
         assert!(FONT_MD > FONT_SM);

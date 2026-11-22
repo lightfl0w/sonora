@@ -19,6 +19,10 @@ pub struct Project {
     pub scale: Scale,
     #[serde(default)]
     pub voices: Vec<StoredVoice>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub loop_bars: Option<(f32, f32)>,
+    #[serde(default)]
+    pub loop_enabled: bool,
 }
 
 #[derive(Deserialize)]
@@ -42,9 +46,10 @@ impl Project {
             song: Song::empty(),
             scale: Scale::default(),
             voices: Vec::new(),
+            loop_bars: None,
+            loop_enabled: false,
         }
     }
-
     pub fn with_song(song: Song, scale: Scale) -> Self {
         Self {
             song,
@@ -52,10 +57,8 @@ impl Project {
             ..Self::empty()
         }
     }
-
     pub fn from_bytes(data: &[u8]) -> Result<Self, ProjectError> {
         let probe: Probe = serde_json::from_slice(data)?;
-
         match probe.format.as_deref() {
             Some(FORMAT) => {}
             Some(_) => {
@@ -66,7 +69,6 @@ impl Project {
             }
             None => return Err(ProjectError::NotProject),
         }
-
         let found = probe.version.unwrap_or(0);
         if found > VERSION {
             return Err(ProjectError::NewerVersion {
@@ -74,7 +76,6 @@ impl Project {
                 found,
             });
         }
-
         let mut project: Project = serde_json::from_slice(data)?;
         project.format = FORMAT.to_string();
         project.version = VERSION;
@@ -84,11 +85,9 @@ impl Project {
         }
         Ok(project)
     }
-
     pub fn to_bytes(&self) -> Result<Vec<u8>, ProjectError> {
         Ok(serde_json::to_vec_pretty(self)?)
     }
-
     pub fn load(path: &Path) -> Result<Self, ProjectError> {
         let data = std::fs::read(path).map_err(|source| ProjectError::Read {
             path: path.to_path_buf(),
@@ -96,19 +95,16 @@ impl Project {
         })?;
         Self::from_bytes(&data)
     }
-
     pub fn save(&self, path: &Path) -> Result<(), ProjectError> {
         let write_err = |source: std::io::Error| ProjectError::Write {
             path: path.to_path_buf(),
             source,
         };
-
         if let Some(parent) = path.parent() {
             if !parent.as_os_str().is_empty() {
                 std::fs::create_dir_all(parent).map_err(write_err)?;
             }
         }
-
         let data = self.to_bytes()?;
         let tmp = temp_path(path);
         std::fs::write(&tmp, &data).map_err(write_err)?;
@@ -120,13 +116,43 @@ impl Project {
             }
         })
     }
-
     pub fn display_name(&self) -> String {
         if self.title.trim().is_empty() {
             "未命名工程".to_string()
         } else {
             self.title.clone()
         }
+    }
+    pub fn default_dir() -> PathBuf {
+        if let Ok(dir) = std::env::var("APPDATA") {
+            PathBuf::from(dir).join("Sonora").join("projects")
+        } else {
+            std::env::current_dir()
+                .unwrap_or_else(|_| PathBuf::from("."))
+                .join("projects")
+        }
+    }
+    pub fn file_name_for(title: &str) -> String {
+        let cleaned: String = title
+            .chars()
+            .map(|c| {
+                if c.is_control() || "\\/:*?\"<>|".contains(c) || c == '\n' {
+                    '_'
+                } else {
+                    c
+                }
+            })
+            .collect();
+        let trimmed = cleaned.trim().trim_matches('.');
+        let stem = if trimmed.is_empty() {
+            "未命名工程"
+        } else {
+            trimmed
+        };
+        format!("{stem}.{EXTENSION}")
+    }
+    pub fn default_path_for(title: &str) -> PathBuf {
+        Self::default_dir().join(Self::file_name_for(title))
     }
 }
 

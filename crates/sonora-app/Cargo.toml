@@ -3,3 +3,14 @@ name = "sonora-app"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+
+[[bin]]
+name = "sonora"
+path = "src/main.rs"
+
+[dependencies]
+sonora-core = { workspace = true }
+sonora-project = { workspace = true }
+sonora-ui = { workspace = true }
+gpui-fast = { workspace = true }
+gpui-fast-platform = { workspace = true }

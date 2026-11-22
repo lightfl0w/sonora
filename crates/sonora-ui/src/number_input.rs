@@ -1,6 +1,6 @@
 use gpui::{
-    div, px, rgb, App, ElementId, InteractiveElement, IntoElement, ParentElement, RenderOnce,
-    StatefulInteractiveElement, Styled, Window,
+    App, ElementId, InteractiveElement, IntoElement, ParentElement, RenderOnce,
+    StatefulInteractiveElement, Styled, Window, div, px, rgb,
 };
 
 use crate::theme::{self, FONT_MD, RADIUS_MD};
@@ -38,48 +38,39 @@ impl NumberInput {
             on_blur: None,
         }
     }
-
     pub fn range(mut self, min: f32, max: f32) -> Self {
         self.min = min;
         self.max = if max > min { max } else { min + 1.0 };
         self
     }
-
     pub fn step(mut self, step: f32) -> Self {
         self.step = if step > 0.0 { step } else { 1.0 };
         self
     }
-
     pub fn width(mut self, width: f32) -> Self {
         self.width = width.max(40.0);
         self
     }
-
     pub fn suffix(mut self, suffix: &'static str) -> Self {
         self.suffix = suffix;
         self
     }
-
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
     }
-
     pub fn focused(mut self, focused: bool) -> Self {
         self.focused = focused;
         self
     }
-
     pub fn on_commit(mut self, handler: impl Fn(f32, &mut Window, &mut App) + 'static) -> Self {
         self.on_commit = Some(Box::new(handler));
         self
     }
-
     pub fn on_focus(mut self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
         self.on_focus = Some(Box::new(handler));
         self
     }
-
     pub fn on_blur(mut self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
         self.on_blur = Some(Box::new(handler));
         self
@@ -107,7 +98,6 @@ impl RenderOnce for NumberInput {
         let p = theme::palette();
         let disabled = self.disabled;
         let focused = self.focused;
-
         let mut field = div()
             .flex()
             .flex_row()
@@ -128,7 +118,6 @@ impl RenderOnce for NumberInput {
             .w(px(self.width))
             .id(self.id.clone())
             .child(div().flex_1().truncate().child(self.value.clone()));
-
         if !self.suffix.is_empty() {
             field = field.child(
                 div()
@@ -138,22 +127,18 @@ impl RenderOnce for NumberInput {
                     .child(self.suffix),
             );
         }
-
         if !disabled {
             field = field.cursor_pointer();
         }
-
         let focus = self.on_focus;
         if let Some(handler) = focus {
             field = field.on_click(
                 move |_: &gpui::ClickEvent, window: &mut Window, cx: &mut App| handler(window, cx),
             );
         }
-
         if disabled {
             return field.opacity(0.45).into_any_element();
         }
-
         field.into_any_element()
     }
 }
@@ -165,14 +150,12 @@ pub fn number_input(id: impl Into<ElementId>, value: f32) -> NumberInput {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn parses_plain_numbers() {
         assert_eq!(parse_number("120"), Some(120.0));
         assert_eq!(parse_number("  96.5  "), Some(96.5));
         assert_eq!(parse_number("-12"), Some(-12.0));
     }
-
     #[test]
     fn rejects_garbage() {
         assert_eq!(parse_number(""), None);
@@ -182,28 +165,24 @@ mod tests {
         assert_eq!(parse_number("inf"), None);
         assert_eq!(parse_number("NaN"), None);
     }
-
     #[test]
     fn clamps_to_range() {
         assert_eq!(clamp_value(500.0, 20.0, 300.0), 300.0);
         assert_eq!(clamp_value(-5.0, 20.0, 300.0), 20.0);
         assert_eq!(clamp_value(120.0, 20.0, 300.0), 120.0);
     }
-
     #[test]
     fn non_finite_falls_back_to_min() {
         assert_eq!(clamp_value(f32::NAN, 20.0, 300.0), 20.0);
         assert_eq!(clamp_value(f32::INFINITY, 20.0, 300.0), 20.0);
         assert_eq!(clamp_value(f32::NEG_INFINITY, 20.0, 300.0), 20.0);
     }
-
     #[test]
     fn builder_keeps_valid_range_and_step() {
         let n = NumberInput::new("t", 120.0).range(300.0, 20.0).step(0.0);
         assert!(n.max > n.min);
         assert_eq!(n.step, 1.0);
     }
-
     #[test]
     fn initial_value_formats_without_decimals() {
         let n = NumberInput::new("t", 120.0);

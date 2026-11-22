@@ -20,6 +20,7 @@ sonora-app = { path = "crates/sonora-app" }
 cpal = "0.18.2"
 crossbeam-queue = "0.3.14"
 gpui-fast = "0.1.17"
+gpui-fast-platform = "0.1.17"
 thiserror = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

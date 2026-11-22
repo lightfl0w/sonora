@@ -1,9 +1,9 @@
 use gpui::{
-    div, px, rgb, App, ClickEvent, ElementId, InteractiveElement, IntoElement, ParentElement,
-    RenderOnce, SharedString, StatefulInteractiveElement, Styled, Window,
+    App, ClickEvent, ElementId, InteractiveElement, IntoElement, ParentElement, RenderOnce,
+    SharedString, StatefulInteractiveElement, Styled, Window, div, px, rgb,
 };
 
-use crate::theme::{self, Palette, RADIUS_MD, FONT_SM};
+use crate::theme::{self, FONT_SM, Palette, RADIUS_MD};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Variant {
@@ -22,6 +22,7 @@ pub enum Size {
 #[derive(gpui::IntoElement)]
 pub struct Button {
     id: Option<ElementId>,
+    selector: Option<String>,
     label: SharedString,
     variant: Variant,
     size: Size,
@@ -35,6 +36,7 @@ impl Button {
     pub fn new(label: impl Into<SharedString>) -> Self {
         Self {
             id: None,
+            selector: None,
             label: label.into(),
             variant: Variant::Secondary,
             size: Size::Md,
@@ -44,53 +46,46 @@ impl Button {
             on_click: None,
         }
     }
-
     pub fn id(mut self, id: impl Into<ElementId>) -> Self {
         self.id = Some(id.into());
         self
     }
-
+    pub fn selector(mut self, name: impl Into<String>) -> Self {
+        self.selector = Some(name.into());
+        self
+    }
     pub fn variant(mut self, variant: Variant) -> Self {
         self.variant = variant;
         self
     }
-
     pub fn size(mut self, size: Size) -> Self {
         self.size = size;
         self
     }
-
     pub fn primary(self) -> Self {
         self.variant(Variant::Primary)
     }
-
     pub fn ghost(self) -> Self {
         self.variant(Variant::Ghost)
     }
-
     pub fn danger(self) -> Self {
         self.variant(Variant::Danger)
     }
-
     pub fn small(self) -> Self {
         self.size(Size::Sm)
     }
-
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
     }
-
     pub fn selected(mut self, selected: bool) -> Self {
         self.selected = selected;
         self
     }
-
     pub fn full_width(mut self) -> Self {
         self.full_width = true;
         self
     }
-
     pub fn on_click(
         mut self,
         handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
@@ -154,7 +149,6 @@ impl Button {
             Size::Md => (12.0, 7.0),
         }
     }
-
     fn font_size(&self) -> f32 {
         match self.size {
             Size::Sm => FONT_SM,
@@ -168,7 +162,6 @@ impl RenderOnce for Button {
         let p = theme::palette();
         let colors = colors_for(p, self.variant, self.selected);
         let (pad_x, pad_y) = self.padding();
-
         let mut base = div()
             .flex()
             .flex_row()
@@ -180,41 +173,33 @@ impl RenderOnce for Button {
             .rounded(px(RADIUS_MD))
             .text_size(px(self.font_size()))
             .text_color(rgb(colors.fg));
-
         if let Some(bg) = colors.bg {
             base = base.bg(rgb(bg));
         }
-
         if let Some(border) = colors.border {
             let a = if self.selected { 0.6 } else { p.border_a };
-            base = base
-                .border_1()
-                .border_color(theme::alpha(border, a));
+            base = base.border_1().border_color(theme::alpha(border, a));
         }
-
         if self.full_width {
             base = base.w_full();
         }
-
         if self.disabled {
             return base.opacity(0.45).into_any_element();
         }
-
         if let Some(hover) = colors.bg_hover {
             base = base.hover(move |style| style.bg(rgb(hover)));
         }
-
         base = base.cursor_pointer();
-
-        let id = self.id.unwrap_or_else(|| ElementId::Name(self.label.clone()));
-        let mut clickable = base
-            .id(id)
-            .active(|style| style.opacity(0.72));
-
+        let id = self
+            .id
+            .unwrap_or_else(|| ElementId::Name(self.label.clone()));
+        let mut clickable = base.id(id).active(|style| style.opacity(0.72));
+        if let Some(sel) = self.selector {
+            clickable = clickable.debug_selector(move || sel.clone());
+        }
         if let Some(handler) = self.on_click {
             clickable = clickable.on_click(handler);
         }
-
         clickable.child(self.label).into_any_element()
     }
 }
@@ -227,7 +212,6 @@ pub fn button(label: impl Into<SharedString>) -> Button {
 mod tests {
     use super::*;
     use crate::theme::{DARK, LIGHT};
-
     #[test]
     fn variants_have_distinct_roles() {
         let primary = colors_for(&LIGHT, Variant::Primary, false);
@@ -242,13 +226,11 @@ mod tests {
         assert_ne!(off.bg, on.bg);
         assert_eq!(on.border, Some(LIGHT.accent));
     }
-
     #[test]
     fn ghost_has_no_border() {
         assert!(colors_for(&LIGHT, Variant::Ghost, false).border.is_none());
         assert!(colors_for(&DARK, Variant::Ghost, false).border.is_none());
     }
-
     #[test]
     fn ghost_has_no_background_so_it_inherits_parent() {
         for p in [&LIGHT, &DARK] {
@@ -257,7 +239,6 @@ mod tests {
             assert!(c.bg_hover.is_some(), "悬停仍需反馈");
         }
     }
-
     #[test]
     fn ghost_hover_uses_theme_card_not_hardcoded() {
         let light = colors_for(&LIGHT, Variant::Ghost, false);
@@ -265,7 +246,6 @@ mod tests {
         assert_eq!(light.bg_hover, Some(LIGHT.card_hi));
         assert_eq!(dark.bg_hover, Some(DARK.card_hi));
     }
-
     #[test]
     fn primary_button_contrasts_in_dark_mode() {
         let c = colors_for(&DARK, Variant::Primary, false);
@@ -273,7 +253,6 @@ mod tests {
         assert_eq!(c.fg, DARK.primary_fg);
         assert_ne!(Some(c.fg), c.bg);
     }
-
     #[test]
     fn sizes_scale_padding_and_font() {
         let sm = Button::new("x").small();
@@ -281,7 +260,6 @@ mod tests {
         assert!(sm.font_size() < md.font_size());
         assert!(sm.padding().0 < md.padding().0);
     }
-
     #[test]
     fn builder_chains() {
         let b = Button::new("x")

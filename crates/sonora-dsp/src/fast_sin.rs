@@ -13,7 +13,6 @@ impl FastSin {
         }
         Self { table }
     }
-
     #[inline]
     pub fn eval(&self, phase: f32) -> f32 {
         let p = phase - phase.floor();
@@ -35,7 +34,6 @@ impl Default for FastSin {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn matches_std_sin_closely() {
         let f = FastSin::new();
@@ -48,7 +46,6 @@ mod tests {
         }
         assert!(max_err < 1e-4, "最大误差 {max_err} 应小于 1e-4");
     }
-
     #[test]
     fn anchors_are_exact() {
         let f = FastSin::new();
@@ -57,15 +54,13 @@ mod tests {
         assert!(f.eval(0.5).abs() < 1e-6);
         assert!((f.eval(0.75) + 1.0).abs() < 1e-6);
     }
-
     #[test]
     fn wraps_out_of_range_phase() {
         let f = FastSin::new();
         assert!((f.eval(1.25) - 1.0).abs() < 1e-5);
-        assert!((f.eval(-0.75) - 1.0).abs() < 1e-5); // -0.75 ≡ 0.25
+        assert!((f.eval(-0.75) - 1.0).abs() < 1e-5);
         assert!((f.eval(2.25) - 1.0).abs() < 1e-5);
     }
-
     #[test]
     fn output_stays_in_unit_range() {
         let f = FastSin::new();
